@@ -1,0 +1,216 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #FF9933;
+  --primary-hover: #e68524;
+  --secondary: #138808;
+  --secondary-hover: #0f6c06;
+  --chakra: #000080;
+  --light: #FFF5E6;
+  --dark: #1f2937;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  font-family: 'Noto Sans', 'Noto Sans Devanagari', sans-serif;
+}
+
+/* Image safety & responsive containment */
+img {
+  max-width: 100%;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* 3D Indian Tricolor Text Effect for Brand Title */
+.text-3d-tri {
+  color: var(--primary);
+  display: inline-block;
+  text-shadow:
+    1px 1px 0px #ffffff,
+    2px 2px 0px var(--secondary),
+    4px 4px 0px var(--chakra),
+    5px 5px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom Scrollbar - Webkit & Firefox */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) #f1f1f1;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+/* No Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Search Bar Focus Ring */
+.search-ring:focus-within {
+  box-shadow: 0 0 0 3px rgba(255, 153, 51, 0.4);
+  border-color: var(--primary);
+}
+
+/* Play Button Overlay on Media Cards */
+.play-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  transition: background 0.3s ease;
+}
+
+.group:hover .play-overlay {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Floating Contact Overlay (WhatsApp + Call + Toggle) */
+#contact-overlay {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.overlay-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-decoration: none;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  transform: translateY(0) scale(1);
+  transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity .2s ease,
+              max-height .25s ease,
+              padding .25s ease,
+              margin .25s ease,
+              visibility .25s ease;
+  opacity: 1;
+  max-height: 48px;
+  font-size: 14px;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+  visibility: visible;
+}
+
+.overlay-btn.wa-btn {
+  background: linear-gradient(180deg, #25D366, #128C7E);
+}
+
+.overlay-btn.call-btn {
+  background: linear-gradient(180deg, #FF7A00, #C84300);
+}
+
+.overlay-text {
+  display: inline-block;
+}
+
+.overlay-toggle {
+  pointer-events: auto;
+  background: #0f172a;
+  color: #fff;
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.35);
+  cursor: pointer;
+  transition: transform .18s ease, background .15s ease;
+}
+
+.overlay-toggle:hover {
+  transform: translateY(-3px) scale(1.05);
+}
+
+.overlay-btn:hover {
+  transform: translateY(-4px) scale(1.03);
+  opacity: 0.96;
+}
+
+/* Collapsed state */
+#contact-overlay.collapsed .overlay-btn {
+  transform: translateY(12px) scale(0.85);
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.overlay-btn:focus-visible,
+.overlay-toggle:focus-visible {
+  outline: 3px solid rgba(255, 153, 51, 0.6);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  #contact-overlay {
+    right: 12px;
+    bottom: 12px;
+    gap: 8px;
+  }
+  .overlay-text {
+    display: none;
+  }
+  .overlay-btn {
+    padding: 10px;
+    border-radius: 999px;
+  }
+}
+
+/* Colors fallback classes */
+.bg-chakra { background-color: var(--chakra) !important; }
+.text-chakra { color: var(--chakra) !important; }
+.border-chakra { border-color: var(--chakra) !important; }
+

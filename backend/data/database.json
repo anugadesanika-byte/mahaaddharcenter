@@ -1,0 +1,211 @@
+{
+  "users": [
+    {
+      "id": "usr_admin",
+      "name": "System Administrator",
+      "email": "admin@aryaseva.com",
+      "passwordHash": "$2a$10$1r3Vw6ye1EpGQUQjvmFXme4W9ZlAiyKksEwE7L2xCGwrgENxOZbdy",
+      "role": "admin",
+      "phone": "7774946121",
+      "createdAt": "2026-10-22T06:40:07.991Z"
+    },
+    {
+      "id": "usr_demo_customer",
+      "name": "Rohan Deshmukh",
+      "email": "customer@example.com",
+      "passwordHash": "$2a$10$mMlNARStJEsmPwU4HpFemehWxxmorUazdDT4FhshJnQF4bU.z0lGi",
+      "role": "customer",
+      "phone": "9822334455",
+      "createdAt": "2026-11-06T06:40:08.139Z",
+      "activeSession": {
+        "sessionId": "sess_1795247187505_niz8tx08g",
+        "deviceInfo": "Safari on iPhone (Device 2)",
+        "ip": "::1",
+        "createdAt": "2026-11-21T07:46:27.505Z",
+        "lastActive": "2026-11-21T07:46:27.505Z"
+      }
+    }
+  ],
+  "requests": [
+    {
+      "id": "REQ-2026-1006",
+      "customerId": "usr_demo_customer",
+      "customerName": "Rohan Deshmukh",
+      "customerEmail": "customer@example.com",
+      "customerPhone": "9822334455",
+      "aadhaarNumber": "987665364657",
+      "address": "Pune",
+      "serviceId": 106,
+      "serviceName": "Voter ID Card",
+      "category": "Identity",
+      "status": "fulfilled",
+      "notes": "",
+      "operatorRemarks": "Application received online. Awaiting document verification.",
+      "fee": 100,
+      "trackingNumber": "TRACK-799735",
+      "documents": [
+        {
+          "name": "documents",
+          "originalName": "ValidateXLogo.png",
+          "filename": "1795243778533_ValidateXLogo.png",
+          "size": 647289,
+          "mimetype": "image/png",
+          "url": "/uploads/1795243778533_ValidateXLogo.png"
+        }
+      ],
+      "createdAt": "2026-11-21T06:49:38.556Z",
+      "updatedAt": "2026-11-21T06:51:06.870Z",
+      "completedAt": "2026-11-21T06:51:06.870Z"
+    },
+    {
+      "id": "REQ-2026-0891",
+      "customerId": "usr_demo_customer",
+      "customerName": "Rohan Deshmukh",
+      "customerEmail": "customer@example.com",
+      "customerPhone": "9822334455",
+      "serviceId": 101,
+      "serviceName": "Aadhaar Card Biometric Update",
+      "category": "Identity",
+      "status": "fulfilled",
+      "notes": "Biometric update appointment completed at center. Acknowledgement slip generated.",
+      "operatorRemarks": "Verified against UIDAI central portal. Updated successfully.",
+      "fee": 100,
+      "trackingNumber": "UID-PUN-98214",
+      "documents": [
+        {
+          "name": "Identity Proof",
+          "originalName": "old_aadhaar.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        },
+        {
+          "name": "Address Proof",
+          "originalName": "electricity_bill.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        }
+      ],
+      "createdAt": "2026-11-11T06:40:08.139Z",
+      "updatedAt": "2026-11-13T06:40:08.139Z",
+      "completedAt": "2026-11-13T06:40:08.139Z"
+    },
+    {
+      "id": "REQ-2026-0942",
+      "customerId": "usr_demo_customer",
+      "customerName": "Rohan Deshmukh",
+      "customerEmail": "customer@example.com",
+      "customerPhone": "9822334455",
+      "serviceId": 201,
+      "serviceName": "Domicile & Age Nationality Certificate",
+      "category": "Certificates",
+      "status": "in_progress",
+      "notes": "Applied on Aaple Sarkar. Tehsildar desk verification in progress.",
+      "operatorRemarks": "Documents scanned and submitted to Tahsildar Haveli Pune.",
+      "fee": 250,
+      "trackingNumber": "MH-DOM-2026-4432",
+      "documents": [
+        {
+          "name": "School Leaving Certificate",
+          "originalName": "lc_certificate.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        },
+        {
+          "name": "Ration Card",
+          "originalName": "ration_card.jpg",
+          "url": "/uploads/sample_doc.pdf"
+        }
+      ],
+      "createdAt": "2026-11-17T06:40:08.139Z",
+      "updatedAt": "2026-11-21T06:50:38.224Z",
+      "completedAt": null
+    },
+    {
+      "id": "REQ-2026-1005",
+      "customerId": "usr_demo_customer",
+      "customerName": "Rohan Deshmukh",
+      "customerEmail": "customer@example.com",
+      "customerPhone": "9822334455",
+      "serviceId": 301,
+      "serviceName": "Shop Act (Gumasta) License",
+      "category": "Business",
+      "status": "pending",
+      "notes": "New retail grocery shop in Akurdi. Needs fast processing.",
+      "operatorRemarks": "Awaiting signature verification.",
+      "fee": 500,
+      "trackingNumber": "PCMC-GUM-7761",
+      "documents": [
+        {
+          "name": "Shop Front Photo with Board",
+          "originalName": "shop_photo.jpg",
+          "url": "/uploads/sample_doc.pdf"
+        },
+        {
+          "name": "Rent Agreement",
+          "originalName": "rent_agreement.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        }
+      ],
+      "createdAt": "2026-11-20T06:40:08.139Z",
+      "updatedAt": "2026-11-20T06:40:08.139Z",
+      "completedAt": null
+    },
+    {
+      "id": "REQ-2026-1012",
+      "customerId": "usr_customer_prakash",
+      "customerName": "Prakash Patil",
+      "customerEmail": "prakash.patil@gmail.com",
+      "customerPhone": "9765432109",
+      "serviceId": 202,
+      "serviceName": "Income Certificate (3 Years)",
+      "category": "Certificates",
+      "status": "fulfilled",
+      "notes": "Required for college engineering scholarship.",
+      "operatorRemarks": "Tahsildar approved certificate signed digitally.",
+      "fee": 150,
+      "trackingNumber": "INC-2026-9021",
+      "documents": [
+        {
+          "name": "Salary Slip / Talathi Dakhla",
+          "originalName": "income_proof.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        },
+        {
+          "name": "Aadhaar Card",
+          "originalName": "aadhaar_front.jpg",
+          "url": "/uploads/sample_doc.pdf"
+        }
+      ],
+      "createdAt": "2026-11-15T06:40:08.139Z",
+      "updatedAt": "2026-11-18T06:40:08.139Z",
+      "completedAt": "2026-11-18T06:40:08.139Z"
+    },
+    {
+      "id": "REQ-2026-1018",
+      "customerId": "usr_customer_anita",
+      "customerName": "Anita Shinde",
+      "customerEmail": "anita.s@yahoo.com",
+      "customerPhone": "9823098765",
+      "serviceId": 504,
+      "serviceName": "Ladki Bahin Yojana e-KYC & Registration",
+      "category": "Financial",
+      "status": "pending",
+      "notes": "Bank Aadhaar linking assistance requested.",
+      "operatorRemarks": "Queued for biometric DBT verification.",
+      "fee": 50,
+      "trackingNumber": "LBY-MAHA-4312",
+      "documents": [
+        {
+          "name": "Bank Passbook",
+          "originalName": "bank_passbook.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        },
+        {
+          "name": "Aadhaar Card",
+          "originalName": "aadhaar.pdf",
+          "url": "/uploads/sample_doc.pdf"
+        }
+      ],
+      "createdAt": "2026-11-21T06:40:08.139Z",
+      "updatedAt": "2026-11-21T06:40:08.139Z",
+      "completedAt": null
+    }
+  ]
+}
