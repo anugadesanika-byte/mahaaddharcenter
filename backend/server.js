@@ -46,21 +46,36 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 } // 15MB limit per file
+  limits: { fileSize: 1 * 1024 * 1024 } // 1MB maximum limit per document
 });
 
-// Active SSE connections map: sessionId -> res
+// Active SSE connections map: sessionId -> { res, userId, role, email }
 const activeSSEConnections = new Map();
 
 function sendSSEMessage(sessionId, data) {
-  const clientRes = activeSSEConnections.get(sessionId);
-  if (clientRes) {
+  const client = activeSSEConnections.get(sessionId);
+  if (client) {
     try {
+      const clientRes = client.res || client;
       clientRes.write(`data: ${JSON.stringify(data)}\n\n`);
     } catch (e) {
       activeSSEConnections.delete(sessionId);
     }
   }
+}
+
+// Real-time event broadcaster for requests, approvals, and citizen updates
+function broadcastRealtimeEvent(eventData, filterFn = null) {
+  activeSSEConnections.forEach((client, sessionId) => {
+    try {
+      if (!filterFn || filterFn(client)) {
+        const clientRes = client.res || client;
+        clientRes.write(`data: ${JSON.stringify(eventData)}\n\n`);
+      }
+    } catch (e) {
+      activeSSEConnections.delete(sessionId);
+    }
+  });
 }
 
 // Helper: Token generator (includes unique sessionId)
@@ -189,6 +204,19 @@ app.post('/api/auth/register', async (req, res) => {
     db.users.push(newUser);
     writeDB(db);
 
+    // Broadcast real-time citizen registration event
+    broadcastRealtimeEvent({
+      type: 'NEW_CITIZEN_REGISTERED',
+      message: `New citizen registered: ${newUser.name} (${newUser.email})`,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        createdAt: newUser.createdAt
+      }
+    });
+
     const token = generateToken(newUser, sessionId);
     res.status(201).json({
       message: 'Registration successful',
@@ -309,8 +337,8 @@ app.get('/api/auth/session-stream', (req, res) => {
 
     res.write(`data: ${JSON.stringify({ type: 'CONNECTED', sessionId: decoded.sessionId })}\n\n`);
 
-    // Register active SSE connection
-    activeSSEConnections.set(decoded.sessionId, res);
+    // Register active SSE connection with user metadata
+    activeSSEConnections.set(decoded.sessionId, { res, userId: user.id, role: user.role, email: user.email });
 
     // Keep connection alive with heartbeat every 20 seconds
     const heartbeat = setInterval(() => {
@@ -323,9 +351,7 @@ app.get('/api/auth/session-stream', (req, res) => {
 
     req.on('close', () => {
       clearInterval(heartbeat);
-      if (activeSSEConnections.get(decoded.sessionId) === res) {
-        activeSSEConnections.delete(decoded.sessionId);
-      }
+      activeSSEConnections.delete(decoded.sessionId);
     });
   } catch (err) {
     return res.status(401).send('Invalid token');
@@ -447,6 +473,13 @@ app.post('/api/requests', authMiddleware, upload.array('documents', 10), (req, r
     db.requests.unshift(newRequest);
     writeDB(db);
 
+    // Broadcast real-time event for new citizen service application
+    broadcastRealtimeEvent({
+      type: 'NEW_REQUEST',
+      message: `New citizen application: ${newRequest.serviceName} from ${newRequest.customerName}`,
+      request: newRequest
+    });
+
     res.status(201).json({
       message: 'Service request submitted successfully!',
       request: newRequest
@@ -547,6 +580,22 @@ app.patch('/api/requests/:id/status', authMiddleware, adminMiddleware, async (re
 
     db.requests[index] = current;
     writeDB(db);
+
+    // Broadcast real-time status update to both the Customer and Admins
+    broadcastRealtimeEvent({
+      type: 'REQUEST_STATUS_UPDATED',
+      requestId: current.id,
+      customerId: current.customerId,
+      customerEmail: current.customerEmail,
+      status: newStatus,
+      isApproved: isNowApproved,
+      serviceName: current.serviceName,
+      operatorRemarks: current.operatorRemarks,
+      trackingNumber: current.trackingNumber,
+      completedAt: current.completedAt,
+      request: current,
+      timestamp: new Date().toISOString()
+    });
 
     res.json({
       message: `Request status updated to ${newStatus}`,
@@ -957,6 +1006,22 @@ app.get('/api/analytics', authMiddleware, adminMiddleware, (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Failed to generate analytics', error: err.message });
   }
+});
+
+// Multer Error Handling Middleware: Enforces 1 MB file limit
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        message: 'File upload error: Document file size exceeds the 1 MB maximum limit. Please compress or resize your file before uploading.'
+      });
+    }
+    return res.status(400).json({ message: `Upload error: ${err.message}` });
+  }
+  if (err) {
+    return res.status(500).json({ message: err.message || 'Internal server error during upload' });
+  }
+  next();
 });
 
 // Start Server

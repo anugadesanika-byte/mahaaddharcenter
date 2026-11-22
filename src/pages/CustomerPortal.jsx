@@ -23,6 +23,9 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(null);
+  const [realtimeToast, setRealtimeToast] = useState(null);
+
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB Maximum Limit per document
 
   // Selected Service metadata
   const currentService = servicesData.find((s) => s.id === Number(selectedServiceId)) || servicesData[0];
@@ -46,12 +49,72 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
         setSelectedServiceId(preSelectedServiceId);
         setActiveTab('apply');
       }
+
+      // Real-time Event Subscription (SSE & Cross-Tab Broadcast)
+      const token = localStorage.getItem('eseva_auth_token');
+      const unsubscribe = api.subscribeSessionStream(
+        token,
+        null,
+        (realtimeEvent) => {
+          if (realtimeEvent.type === 'REQUEST_STATUS_UPDATED') {
+            setMyRequests((prev) => {
+              const idx = prev.findIndex((r) => r.id === realtimeEvent.requestId);
+              if (idx !== -1) {
+                const copy = [...prev];
+                copy[idx] = {
+                  ...copy[idx],
+                  status: realtimeEvent.status || copy[idx].status,
+                  operatorRemarks: realtimeEvent.operatorRemarks || copy[idx].operatorRemarks,
+                  trackingNumber: realtimeEvent.trackingNumber || copy[idx].trackingNumber,
+                  completedAt: realtimeEvent.completedAt || copy[idx].completedAt,
+                  updatedAt: realtimeEvent.timestamp || new Date().toISOString()
+                };
+                return copy;
+              }
+              return prev;
+            });
+
+            const isApproved = realtimeEvent.status === 'fulfilled';
+            setRealtimeToast({
+              isApproved,
+              title: isApproved ? 'Application Approved & Certificate Ready!' : `Application Updated: ${realtimeEvent.status.toUpperCase()}`,
+              message: `${realtimeEvent.serviceName || 'Your request'} (${realtimeEvent.requestId}) status has been updated in real-time.`,
+              status: realtimeEvent.status
+            });
+            setTimeout(() => setRealtimeToast(null), 9000);
+          }
+        }
+      );
+
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
   }, [user, preSelectedServiceId]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    setUploadedFiles((prev) => [...prev, ...files]);
+    const validFiles = [];
+    const oversizedFiles = [];
+
+    files.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        oversizedFiles.push(`${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (oversizedFiles.length > 0) {
+      alert(
+        `File Size Exceeded (1 MB Limit):\n\nThe following file(s) exceed the 1 MB maximum limit:\n• ${oversizedFiles.join('\n• ')}\n\nPlease compress or resize your documents before uploading.`
+      );
+    }
+
+    if (validFiles.length > 0) {
+      setUploadedFiles((prev) => [...prev, ...validFiles]);
+    }
+    e.target.value = '';
   };
 
   const removeFile = (index) => {
@@ -130,6 +193,10 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
               <span className="text-xs font-bold text-secondary uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                 Aaple Sarkar Citizen Services
               </span>
+              <span className="bg-blue-100 text-blue-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                Real-Time Live Sync
+              </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-chakra mt-1">
               {t('portalTitle')}
@@ -156,6 +223,33 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
           </div>
         </div>
       </div>
+
+      {/* Floating Real-Time Status Toast */}
+      {realtimeToast && (
+        <div className="container mx-auto px-4 mt-4">
+          <div className={`p-4 rounded-2xl shadow-lg border flex items-center justify-between gap-4 animate-bounce-subtle ${
+            realtimeToast.isApproved
+              ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white border-emerald-400'
+              : 'bg-gradient-to-r from-chakra to-slate-800 text-white border-slate-700'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg shrink-0">
+                <i className={realtimeToast.isApproved ? 'fas fa-award' : 'fas fa-bell'}></i>
+              </div>
+              <div>
+                <p className="font-extrabold text-sm">{realtimeToast.title}</p>
+                <p className="text-xs text-white/90">{realtimeToast.message}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setRealtimeToast(null)}
+              className="text-white/80 hover:text-white p-1 rounded-lg"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 mt-8 max-w-6xl">
         {/* Navigation Tabs */}
@@ -508,12 +602,18 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
 
                 {/* Section 3: Document Uploads */}
                 <div>
-                  <h3 className="text-lg font-bold text-chakra mb-1 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">3</span>
-                    <span>Upload Required Verification Documents</span>
-                  </h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-bold text-chakra flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">3</span>
+                      <span>Upload Required Verification Documents</span>
+                    </h3>
+                    <span className="bg-amber-100 text-amber-800 text-xs font-extrabold px-3 py-1 rounded-full border border-amber-300 flex items-center gap-1.5 shadow-2xs">
+                      <i className="fas fa-file-shield text-amber-600"></i>
+                      <span>1 MB Maximum Limit Per File</span>
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500 mb-4">
-                    Upload scanned PDFs or clear camera photos of your documents (PDF, JPG, PNG up to 15MB each).
+                    Upload scanned PDFs or clear camera photos of your documents (PDF, JPG, PNG - strictly maximum 1 MB per file).
                   </p>
 
                   <div className="border-2 border-dashed border-slate-300 hover:border-primary rounded-2xl p-6 text-center bg-slate-50/50 transition">
@@ -533,7 +633,7 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
                         Click here to select files or drag and drop
                       </span>
                       <p className="text-xs text-slate-400 mt-1">
-                        Select multiple documents simultaneously (Aadhaar, Ration Card, Photo, Certificates)
+                        Select multiple documents (Aadhaar, Ration Card, Photo, Certificates). Max size: <strong>1 MB</strong> per document.
                       </p>
                     </label>
                   </div>
@@ -551,7 +651,9 @@ export default function CustomerPortal({ onNavigate, preSelectedServiceId }) {
                             <div className="flex items-center gap-2 truncate">
                               <i className="fas fa-file text-primary"></i>
                               <span className="truncate font-medium text-slate-800">{file.name}</span>
-                              <span className="text-slate-400 text-[10px]">({Math.round(file.size / 1024)} KB)</span>
+                              <span className="text-slate-500 font-semibold text-[10px] bg-white px-2 py-0.5 rounded shadow-2xs">
+                                {Math.round(file.size / 1024)} KB / 1 MB max
+                              </span>
                             </div>
                             <button
                               type="button"

@@ -31,6 +31,7 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [viewingDocs, setViewingDocs] = useState([]);
   const [docModalTitle, setDocModalTitle] = useState('');
+  const [realtimeNotice, setRealtimeNotice] = useState(null);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -51,6 +52,57 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
   useEffect(() => {
     fetchDashboardData();
   }, [activeTab, searchQuery]);
+
+  // Real-time listener for incoming customer requests & citizen signups
+  useEffect(() => {
+    const token = localStorage.getItem('eseva_auth_token');
+    const unsubscribe = api.subscribeSessionStream(
+      token,
+      null,
+      (realtimeEvent) => {
+        if (realtimeEvent.type === 'NEW_REQUEST' && realtimeEvent.request) {
+          setRequests((prev) => {
+            const exists = prev.some((r) => r.id === realtimeEvent.request.id);
+            if (exists) return prev;
+            return [realtimeEvent.request, ...prev];
+          });
+          setRealtimeNotice({
+            type: 'NEW_REQUEST',
+            title: '🚨 New Citizen Application Received!',
+            message: `${realtimeEvent.request.customerName} submitted an application for ${realtimeEvent.request.serviceName}.`,
+            time: new Date().toLocaleTimeString()
+          });
+          setTimeout(() => setRealtimeNotice(null), 9000);
+        } else if (realtimeEvent.type === 'NEW_CITIZEN_REGISTERED' && realtimeEvent.user) {
+          setRealtimeNotice({
+            type: 'NEW_CITIZEN_REGISTERED',
+            title: '👤 New Citizen Registered!',
+            message: `${realtimeEvent.user.name} (${realtimeEvent.user.email}) registered on the portal.`,
+            time: new Date().toLocaleTimeString()
+          });
+          setTimeout(() => setRealtimeNotice(null), 9000);
+        } else if (realtimeEvent.type === 'REQUEST_STATUS_UPDATED') {
+          setRequests((prev) =>
+            prev.map((r) =>
+              r.id === realtimeEvent.requestId
+                ? {
+                    ...r,
+                    status: realtimeEvent.status || r.status,
+                    operatorRemarks: realtimeEvent.operatorRemarks || r.operatorRemarks,
+                    trackingNumber: realtimeEvent.trackingNumber || r.trackingNumber,
+                    completedAt: realtimeEvent.completedAt || r.completedAt
+                  }
+                : r
+            )
+          );
+        }
+      }
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   const openStatusModal = (req) => {
     setSelectedRequest(req);
@@ -229,6 +281,33 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
             )}
           </button>
         </div>
+
+        {/* Floating Real-Time Inflow Notice Toast */}
+        {realtimeNotice && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-chakra via-slate-900 to-chakra text-white border border-primary/40 shadow-xl flex items-center justify-between gap-4 text-xs animate-slide-down">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center text-lg shrink-0 shadow-md">
+                <i className={realtimeNotice.type === 'NEW_REQUEST' ? 'fas fa-bolt text-yellow-300' : 'fas fa-user-check'}></i>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-white text-sm">{realtimeNotice.title}</span>
+                  <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    Live
+                  </span>
+                  <span className="text-[10px] text-gray-400">{realtimeNotice.time}</span>
+                </div>
+                <p className="font-medium text-gray-200 mt-0.5">{realtimeNotice.message}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setRealtimeNotice(null)}
+              className="text-gray-300 hover:text-white p-1.5 rounded-lg"
+            >
+              <i className="fas fa-times text-sm"></i>
+            </button>
+          </div>
+        )}
 
         {/* Floating Email Notification Alert Toast */}
         {emailNotificationToast && (

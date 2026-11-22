@@ -316,7 +316,7 @@ const TIMEFRAME_DATASETS = {
 
 export default function AnalyticsPanel({ analytics, requests = [], onRefresh }) {
   const { lang, t } = useLanguage();
-  const [timeframe, setTimeframe] = useState('6m'); // '7d' | '30d' | '6m' | '1y'
+  const [timeframe, setTimeframe] = useState('1y'); // '7d' | '30d' | '6m' | '1y' (defaults to FY 24-25 as shown in design)
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [hoveredDonut, setHoveredDonut] = useState(null);
 
@@ -442,8 +442,8 @@ export default function AnalyticsPanel({ analytics, requests = [], onRefresh }) 
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {/* Exact Timeframe Segmented Control matching uploaded design */}
-          <div className="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+          {/* Exact Timeframe Segmented Control matching uploaded design: 7 Days | 30 Days | 6 Months | FY 24-25 */}
+          <div className="inline-flex items-center rounded-full bg-[#f1f5f9] p-1 text-xs font-semibold border border-slate-200/80 shadow-2xs">
             {[
               { id: '7d', label: timeframeLabels['7d'] },
               { id: '30d', label: timeframeLabels['30d'] },
@@ -458,10 +458,10 @@ export default function AnalyticsPanel({ analytics, requests = [], onRefresh }) 
                     setTimeframe(tItem.id);
                     setHoveredPoint(null);
                   }}
-                  className={`px-3 py-1.5 rounded-lg transition-all duration-150 ${
+                  className={`px-3.5 sm:px-4 py-1.5 rounded-full transition-all duration-150 text-xs ${
                     isActive
-                      ? 'border-2 border-slate-900 bg-white text-primary font-extrabold shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-semibold border-2 border-transparent'
+                      ? 'border-[1.5px] border-black bg-white/70 text-[#FF8A00] font-bold shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 font-semibold border-[1.5px] border-transparent'
                   }`}
                 >
                   {tItem.label}

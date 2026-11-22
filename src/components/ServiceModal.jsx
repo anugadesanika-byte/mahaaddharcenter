@@ -112,15 +112,37 @@ export default function ServiceModal({ service, isOpen, onClose, onApplyOnline }
 
           {/* Documents Section */}
           <div className="mb-6 bg-light p-4 rounded-lg border border-primary/20">
-            <h4 className="font-bold text-chakra border-b border-primary/20 pb-2 mb-3 text-sm uppercase flex items-center gap-2">
-              <i className="fas fa-file-alt text-primary"></i>
-              <span>{t('lblDocuments')}</span>
-            </h4>
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1.5">
+            <div className="flex items-center justify-between border-b border-primary/20 pb-2 mb-3">
+              <h4 className="font-bold text-chakra text-sm uppercase flex items-center gap-2">
+                <i className="fas fa-file-alt text-primary"></i>
+                <span>{t('lblDocuments')}</span>
+              </h4>
+              {service.documentCount && (
+                <span className="bg-primary/10 text-primary text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-primary/20 flex items-center gap-1.5">
+                  <i className="fas fa-layer-group"></i>
+                  <span>{service.documentCount} {t('docCountBadge') || 'Documents Required'}</span>
+                </span>
+              )}
+            </div>
+            <ul className="space-y-2 text-sm text-gray-700">
               {docs.map((d, index) => (
-                <li key={index}>{d}</li>
+                <li key={index} className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-lg border border-gray-100 shadow-2xs">
+                  <span className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
+                    {index + 1}
+                  </span>
+                  <span className="font-medium text-slate-800 leading-snug">{d}</span>
+                </li>
               ))}
             </ul>
+            <div className="mt-3 pt-2.5 border-t border-dashed border-gray-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500">
+              <span className="flex items-center gap-1.5 font-medium text-slate-600">
+                <i className="fas fa-info-circle text-primary"></i>
+                <span>{t('maxFileSizeNotice') || 'Max 1 MB per document (PDF, JPG, PNG)'}</span>
+              </span>
+              <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
+                Aaple Sarkar / UIDAI Verified
+              </span>
+            </div>
           </div>
 
           {/* Eligibility Section */}

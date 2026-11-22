@@ -36,15 +36,32 @@ export function getClientDeviceInfo() {
   return `${browser} (${os})`;
 }
 
-// Cross-tab broadcast channel for instant multi-tab session synchronization
+// Cross-tab broadcast channel for instant multi-tab session synchronization and real-time events
 const SESSION_CHANNEL_NAME = 'eseva_active_session_channel';
+const REALTIME_CHANNEL_NAME = 'eseva_realtime_events';
 let sessionBroadcastChannel = null;
+let realtimeBroadcastChannel = null;
 try {
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
     sessionBroadcastChannel = new BroadcastChannel(SESSION_CHANNEL_NAME);
+    realtimeBroadcastChannel = new BroadcastChannel(REALTIME_CHANNEL_NAME);
   }
 } catch (e) {
   // BroadcastChannel not available in this environment
+}
+
+export function broadcastLocalRealtimeEvent(eventData) {
+  try {
+    if (realtimeBroadcastChannel) {
+      realtimeBroadcastChannel.postMessage(eventData);
+    }
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('eseva_realtime_signal', JSON.stringify({
+        ...eventData,
+        _timestamp: Date.now()
+      }));
+    }
+  } catch (e) {}
 }
 
 // Fallback seed data if backend is offline/cold-starting
@@ -292,6 +309,11 @@ export const api = {
       if (data && data.sessionId) {
         localStorage.setItem('eseva_session_id', data.sessionId);
       }
+      broadcastLocalRealtimeEvent({
+        type: 'NEW_CITIZEN_REGISTERED',
+        user: data.user || { name: userData.name, email: userData.email },
+        message: `New citizen registered: ${userData.name}`
+      });
       return data;
     } catch (err) {
       // Offline fallback registration
@@ -310,6 +332,11 @@ export const api = {
         deviceInfo: clientDevice,
         loginTime: new Date().toISOString()
       }));
+      broadcastLocalRealtimeEvent({
+        type: 'NEW_CITIZEN_REGISTERED',
+        user,
+        message: `New citizen registered: ${user.name}`
+      });
       return { message: 'Registered successfully (Offline Mode)', user, token, sessionId: newSessionId };
     }
   },
@@ -366,7 +393,7 @@ export const api = {
     localStorage.removeItem('eseva_session_id');
   },
 
-  subscribeSessionStream(token, onTerminated) {
+  subscribeSessionStream(token, onTerminated, onRealtimeEvent) {
     let eventSource = null;
     let isCleanedUp = false;
 
@@ -382,6 +409,12 @@ export const api = {
             const data = JSON.parse(event.data);
             if (data.type === 'SESSION_TERMINATED') {
               if (onTerminated) onTerminated(data);
+            } else if (
+              data.type === 'NEW_REQUEST' ||
+              data.type === 'REQUEST_STATUS_UPDATED' ||
+              data.type === 'NEW_CITIZEN_REGISTERED'
+            ) {
+              if (onRealtimeEvent) onRealtimeEvent(data);
             }
           } catch (e) {}
         };
@@ -413,8 +446,18 @@ export const api = {
       }
     };
 
+    const handleRealtimeBroadcast = (event) => {
+      if (isCleanedUp) return;
+      if (event.data && onRealtimeEvent) {
+        onRealtimeEvent(event.data);
+      }
+    };
+
     if (sessionBroadcastChannel) {
       sessionBroadcastChannel.addEventListener('message', handleBroadcast);
+    }
+    if (realtimeBroadcastChannel) {
+      realtimeBroadcastChannel.addEventListener('message', handleRealtimeBroadcast);
     }
 
     // 3. Storage event listener fallback
@@ -436,6 +479,13 @@ export const api = {
             }
           }
         } catch (err) {}
+      } else if (e.key === 'eseva_realtime_signal' && e.newValue) {
+        try {
+          const payload = JSON.parse(e.newValue);
+          if (onRealtimeEvent) {
+            onRealtimeEvent(payload);
+          }
+        } catch (err) {}
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -447,6 +497,9 @@ export const api = {
       }
       if (sessionBroadcastChannel) {
         sessionBroadcastChannel.removeEventListener('message', handleBroadcast);
+      }
+      if (realtimeBroadcastChannel) {
+        realtimeBroadcastChannel.removeEventListener('message', handleRealtimeBroadcast);
       }
       window.removeEventListener('storage', handleStorage);
     };
@@ -511,7 +564,13 @@ export const api = {
         body: isFormData ? formDataOrData : JSON.stringify(formDataOrData)
       });
       if (!res.ok) throw new Error('Failed to submit request');
-      return await res.json();
+      const data = await res.json();
+      broadcastLocalRealtimeEvent({
+        type: 'NEW_REQUEST',
+        request: data.request,
+        message: `New request: ${data.request?.serviceName}`
+      });
+      return data;
     } catch (err) {
       // Offline fallback: save into local database
       const db = getLocalFallbackDB();
@@ -553,6 +612,12 @@ export const api = {
       db.requests = [newReq, ...(db.requests || [])];
       saveLocalFallbackDB(db);
 
+      broadcastLocalRealtimeEvent({
+        type: 'NEW_REQUEST',
+        request: newReq,
+        message: `New request: ${newReq.serviceName}`
+      });
+
       return { message: 'Request submitted successfully!', request: newReq };
     }
   },
@@ -565,7 +630,17 @@ export const api = {
         body: JSON.stringify(updateData)
       });
       if (!res.ok) throw new Error('Failed to update status');
-      return await res.json();
+      const data = await res.json();
+      broadcastLocalRealtimeEvent({
+        type: 'REQUEST_STATUS_UPDATED',
+        requestId: id,
+        status: updateData.status,
+        operatorRemarks: updateData.operatorRemarks,
+        trackingNumber: updateData.trackingNumber,
+        request: data.request,
+        timestamp: new Date().toISOString()
+      });
+      return data;
     } catch (err) {
       const db = getLocalFallbackDB();
       const item = (db.requests || []).find((r) => r.id === id);
@@ -577,6 +652,17 @@ export const api = {
         item.updatedAt = new Date().toISOString();
         if (updateData.status === 'fulfilled') item.completedAt = new Date().toISOString();
         saveLocalFallbackDB(db);
+
+        broadcastLocalRealtimeEvent({
+          type: 'REQUEST_STATUS_UPDATED',
+          requestId: id,
+          status: updateData.status,
+          operatorRemarks: updateData.operatorRemarks,
+          trackingNumber: updateData.trackingNumber,
+          request: item,
+          timestamp: new Date().toISOString()
+        });
+
         return { message: 'Updated locally', request: item };
       }
       throw err;

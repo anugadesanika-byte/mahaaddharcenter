@@ -32,10 +32,16 @@ export default function ServicesPage({ selectedCategory = 'all', onSelectCategor
       <div className="container mx-auto px-4">
         {/* Page Title */}
         <div className="text-center mb-10">
-          <span className="text-xs font-bold text-secondary uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-200">
-            Official Documentation & Assistance
-          </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-chakra mt-3 mb-3">
+          <div className="inline-flex items-center gap-2 bg-green-50 px-3.5 py-1 rounded-full border border-green-200 mb-2">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            <span className="text-xs font-bold text-secondary uppercase tracking-widest">
+              Official Aaple Sarkar & UIDAI Document Checklists
+            </span>
+            <span className="text-[10px] font-extrabold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+              Max 1 MB
+            </span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-chakra mt-2 mb-3">
             {t('allServicesTitle')}
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">

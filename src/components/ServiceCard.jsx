@@ -30,9 +30,21 @@ export default function ServiceCard({ service, onEnquire, onFilterCategory }) {
         <h4 className="font-bold text-chakra text-lg mb-1 line-clamp-1 hover:text-primary transition">
           {service.title[lang] || service.title.en}
         </h4>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
+        <p className="text-sm text-gray-600 mb-3 line-clamp-3 leading-relaxed">
           {service.desc[lang] || service.desc.en}
         </p>
+
+        {service.documentCount && (
+          <div className="mb-3 flex items-center justify-between text-xs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+              <i className="fas fa-file-shield text-primary"></i>
+              <span>{service.documentCount} {lang === 'mr' ? 'कागदपत्रे आवश्यक' : lang === 'hi' ? 'दस्तावेज़ आवश्यक' : 'Docs Required'}</span>
+            </span>
+            <span className="text-[10px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded shadow-2xs">
+              1 MB max
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 pt-2 border-t border-gray-100">
