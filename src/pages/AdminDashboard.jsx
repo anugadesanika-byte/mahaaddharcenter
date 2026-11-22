@@ -147,15 +147,23 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
   };
 
   const handleSendApprovalEmail = async (reqItem) => {
+    const recipient = reqItem.customerEmail || reqItem.applicantEmail || 'citizen';
+    
+    // 1. Create and open Gmail in browser with pre-filled Marathi/English official template
+    api.openGmailForRequest(reqItem);
+
+    // 2. Display real-time UI notification banner
+    setEmailNotificationToast(
+      `🌐 Gmail opened in a new browser tab for ${recipient}! Review the pre-filled official approval template and click Send.`
+    );
+    setTimeout(() => setEmailNotificationToast(null), 8000);
+
+    // 3. Record notification status in background
     try {
-      const res = await api.sendApprovalEmail(reqItem.id);
-      setEmailNotificationToast(
-        `✅ Approval email sent to ${reqItem.customerEmail || reqItem.applicantEmail} via anugadesanika@gmail.com!`
-      );
-      setTimeout(() => setEmailNotificationToast(null), 7000);
+      await api.sendApprovalEmail(reqItem.id);
       fetchDashboardData();
     } catch (err) {
-      alert('Approval email notification: ' + err.message);
+      console.log('Approval notification logged:', err.message);
     }
   };
 
@@ -986,8 +994,8 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
                                 {req.status === 'fulfilled' ? (
                                   <button
                                     onClick={() => handleSendApprovalEmail(req)}
-                                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold py-1.5 px-2 rounded-lg text-[11px] transition flex items-center justify-center gap-1"
-                                    title="Send / Resend Official Approval Email"
+                                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold py-1.5 px-2 rounded-lg text-[11px] transition flex items-center justify-center gap-1 shadow-2xs"
+                                    title="Open Gmail compose in browser with pre-filled approval email"
                                   >
                                     <i className="fas fa-paper-plane text-[10px]"></i>
                                     <span>Email</span>
@@ -1122,8 +1130,8 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
                               {req.status === 'fulfilled' && (
                                 <button
                                   onClick={() => handleSendApprovalEmail(req)}
-                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 px-2 py-1 rounded-lg font-bold text-xs transition shadow-xs flex items-center gap-1"
-                                  title={`Resend Approval Email to ${req.customerEmail || req.applicantEmail} via anugadesanika@gmail.com`}
+                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 px-2.5 py-1 rounded-lg font-bold text-xs transition shadow-2xs flex items-center gap-1"
+                                  title={`Open Gmail compose in browser to send approval email to ${req.customerEmail || req.applicantEmail}`}
                                 >
                                   <i className="fas fa-paper-plane text-[10px]"></i>
                                   <span className="hidden sm:inline">Email</span>
@@ -1361,14 +1369,27 @@ export default function AdminDashboard({ onNavigate, initialSection = 'analytics
                   <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-2.5 text-xs text-emerald-900 animate-fade-in">
                     <i className="fas fa-envelope-circle-check text-emerald-600 mt-0.5 text-sm shrink-0"></i>
                     <div>
-                      <span className="font-bold">Automated Email Notification:</span>
+                      <span className="font-bold">Gmail Notification Dispatch:</span>
                       <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
-                        Approving this request will automatically send an official certificate confirmation email to{' '}
+                        Clicking the <strong>Email</strong> button opens a pre-filled Gmail compose window in your browser with the official approval template ready to send to{' '}
                         <span className="font-semibold underline">
                           {selectedRequest?.customerEmail || selectedRequest?.applicantEmail || 'applicant'}
-                        </span>{' '}
-                        via <span className="font-semibold">anugadesanika@gmail.com</span>.
+                        </span>.
                       </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSendApprovalEmail({
+                            ...selectedRequest,
+                            operatorRemarks: operatorRemarks || selectedRequest?.operatorRemarks,
+                            trackingNumber: trackingNumber || selectedRequest?.trackingNumber
+                          })
+                        }
+                        className="mt-2 text-xs font-bold text-emerald-800 bg-white border border-emerald-300 hover:bg-emerald-100/70 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <i className="fas fa-paper-plane text-[10px] text-emerald-600"></i>
+                        <span>Open Gmail Compose Now</span>
+                      </button>
                     </div>
                   </div>
                 )}

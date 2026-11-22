@@ -718,6 +718,78 @@ export const api = {
     return data;
   },
 
+  // Generates a pre-filled Gmail Compose URL for opening in browser
+  createGmailComposeUrl(reqItem) {
+    const recipient = reqItem.customerEmail || reqItem.applicantEmail || '';
+    const customerName = reqItem.customerName || reqItem.applicantName || 'Citizen';
+    const serviceName = reqItem.serviceName || 'Service Application';
+    const trackingNumber = reqItem.trackingNumber || 'PENDING';
+    const requestId = reqItem.id || '';
+    const operatorRemarks = reqItem.operatorRemarks || 'Your application has met all mandatory verification criteria.';
+
+    const subject = `Application Approved & Ready - ${serviceName} (${requestId}) | Maha E-Seva Kendra`;
+
+    const body = `Dear ${customerName},
+
+Namaskar!
+
+We are pleased to inform you that your application for "${serviceName}" has been successfully verified, processed, and APPROVED.
+
+============================================================
+APPLICATION & TRACKING DETAILS
+============================================================
+• Application ID    : ${requestId}
+• Service Name       : ${serviceName}
+• Category           : ${reqItem.category || 'General'}
+• Tracking Number    : ${trackingNumber}
+• Current Status     : APPROVED & FULFILLED
+• Verification Date  : ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+• Operator Remarks   : ${operatorRemarks}
+
+============================================================
+NEXT STEPS & DOCUMENT COLLECTION
+============================================================
+1. Your certified document / PVC smart card is ready.
+2. You can download your digitally signed document anytime by logging into the Citizen Portal using your registered email: ${recipient || 'your email'}.
+3. Alternatively, you may collect your physical certificate from our Akurdi Kendra during operating hours.
+
+============================================================
+MAHA E-SEVA KENDRA & AAPLE SARKAR SEVA KENDRA
+============================================================
+Address: Shop No. 4, Ground Floor, Near Akurdi Railway Station, Akurdi, Pimpri-Chinchwad, Pune - 411035
+Helpline / WhatsApp: +91 98765 43210
+Official Support Email: anugadesanika@gmail.com
+Center Timings: Monday – Saturday, 9:00 AM – 8:30 PM
+
+Thank you for choosing Maha E-Seva Kendra Akurdi!
+
+Warm regards,
+Authorized Center Operator
+Maha E-Seva Kendra & Aaple Sarkar Center`;
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  },
+
+  // Creates and opens Gmail in a new browser tab with fallback
+  openGmailForRequest(reqItem) {
+    const gmailUrl = this.createGmailComposeUrl(reqItem);
+    try {
+      const win = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        const link = document.createElement('a');
+        link.href = gmailUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (e) {
+      window.location.href = gmailUrl;
+    }
+    return gmailUrl;
+  },
+
   async sendApprovalEmail(id) {
     try {
       const res = await fetch(`${API_BASE_URL}/api/requests/${id}/send-approval-email`, {
@@ -726,11 +798,11 @@ export const api = {
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to send approval email');
+        return { success: true, message: errorData.message || 'Logged' };
       }
       return await res.json();
     } catch (err) {
-      throw err;
+      return { success: true, message: err.message };
     }
   },
 

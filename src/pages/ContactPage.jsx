@@ -75,6 +75,14 @@ export default function ContactPage() {
     window.open(waUrl, '_blank');
   };
 
+  const handleGmailDirect = () => {
+    const to = 'anugadesanika@gmail.com';
+    const subject = formData.subject ? `[Citizen Enquiry] ${formData.subject}` : 'Citizen Enquiry - Maha E-Seva Kendra';
+    const body = `Hello Maha E-Seva Kendra Team,\n\nApplicant Name: ${formData.name || 'Citizen'}\nContact Phone: ${formData.mobile || 'N/A'}\nApplicant Email: ${formData.email || 'N/A'}\n\nEnquiry / Requirement Details:\n${formData.message || 'I would like to enquire about your services, eligibility, and required documents.'}\n\nThank you!`;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="py-16 bg-white min-h-screen animate-fade-in">
       <div className="container mx-auto px-4">
@@ -375,6 +383,17 @@ export default function ContactPage() {
                       <span>Send Official Enquiry Email</span>
                     </>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleGmailDirect}
+                  disabled={status === 'submitting'}
+                  className="w-full sm:w-auto bg-white hover:bg-red-50 text-red-700 border border-red-200 font-bold py-3.5 px-6 rounded-xl transition text-sm flex items-center justify-center gap-2"
+                  title="Open pre-filled enquiry draft in Gmail"
+                >
+                  <i className="fas fa-envelope text-red-500"></i>
+                  <span>Open in Gmail</span>
                 </button>
 
                 <button
