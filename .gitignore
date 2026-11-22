@@ -33,6 +33,8 @@ bower_components/
 .env
 .env.*
 *.env
+vercel.env
+render.env
 backend/.env
 backend/.env.*
 backend/*.env
