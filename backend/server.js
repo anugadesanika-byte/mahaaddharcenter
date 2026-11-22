@@ -5,10 +5,17 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { readDB, writeDB, initDB } = require('./db');
-const { sendRequestApprovedEmail, EMAIL_USER } = require('./emailService');
+const {
+  isEmailConfigured,
+  sendContactEnquiryEmail,
+  sendRequestApprovedEmail,
+  EMAIL_FROM,
+  EMAIL_TO
+} = require('./emailService');
 
 // Initialize database
 initDB();
@@ -17,14 +24,49 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'arya_eseva_jwt_super_secret_key_2026';
 
-// Middleware
-app.use(cors({
-  origin: '*',
+// Trust Render reverse proxy for accurate IP rate-limiting & HTTPS detection
+app.set('trust proxy', 1);
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+// Configure CORS: Allow explicitly configured production Vercel frontend and local development
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://arya-eseva.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
+]
+  .filter(Boolean)
+  .map((origin) => origin.trim().replace(/\/+$/, ''));
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow non-browser requests (Uptime monitors, mobile, curl)
+    if (!origin) return callback(null, true);
+    const normalized = origin.trim().replace(/\/+$/, '');
+    if (allowedOrigins.includes(normalized) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy violation: Origin ${origin} is not allowed`));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-app.use(express.json({ limit: '30mb' }));
-app.use(express.urlencoded({ extended: true, limit: '30mb' }));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+app.use(cors(corsOptions));
+
+// Request Body Limits
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Static uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -139,6 +181,34 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
+// Rate Limiter for outbound Contact Email enquiries (5 requests per 15 minutes per IP)
+const emailRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many enquiry requests from this IP address. Please wait 15 minutes before sending another message.'
+  }
+});
+
+// In-Memory Duplicate Submission Guard (60-second sliding window)
+const recentSubmissions = new Map();
+function isDuplicateSubmission(key, windowSeconds = 60) {
+  const now = Date.now();
+  for (const [k, time] of recentSubmissions.entries()) {
+    if (now - time > windowSeconds * 1000) {
+      recentSubmissions.delete(k);
+    }
+  }
+  if (recentSubmissions.has(key)) {
+    return true;
+  }
+  recentSubmissions.set(key, now);
+  return false;
+}
+
 // -------------------------------------------------------------
 // ROUTES
 // -------------------------------------------------------------
@@ -156,8 +226,10 @@ const handleHealthCheck = (req, res) => {
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
     service: 'Arya Enterprises Maha E-Seva Kendra API',
+    emailProvider: 'Resend HTTPS API',
+    emailConfigured: isEmailConfigured(),
     database: 'connected',
-    message: 'Server is active and monitoring health.'
+    environment: process.env.NODE_ENV || 'development'
   });
 };
 
@@ -165,6 +237,120 @@ app.get('/health', handleHealthCheck);
 app.get('/api/health', handleHealthCheck);
 app.head('/health', (req, res) => res.status(200).end());
 app.head('/api/health', (req, res) => res.status(200).end());
+
+// 0. Email: Send Contact Enquiry via Resend HTTPS API
+app.post('/api/email/send', emailRateLimiter, async (req, res) => {
+  try {
+    const { name, email, phone, subject, message } = req.body || {};
+
+    // 1. Type validation
+    if (
+      typeof name !== 'string' ||
+      typeof email !== 'string' ||
+      typeof subject !== 'string' ||
+      typeof message !== 'string'
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: name, email, subject, and message are required strings.'
+      });
+    }
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPhone = typeof phone === 'string' ? phone.trim() : '';
+    const trimmedSubject = subject.trim();
+    const trimmedMessage = message.trim();
+
+    // 2. Required fields
+    if (!trimmedName || !trimmedEmail || !trimmedSubject || !trimmedMessage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: please fill in all required fields (Name, Email, Subject, and Message).'
+      });
+    }
+
+    // 3. Length validation
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: name must be between 2 and 100 characters.'
+      });
+    }
+    if (trimmedSubject.length < 2 || trimmedSubject.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: subject must be between 2 and 200 characters.'
+      });
+    }
+    if (trimmedMessage.length < 5 || trimmedMessage.length > 3000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: message must be between 5 and 3000 characters.'
+      });
+    }
+    if (trimmedPhone && trimmedPhone.length > 20) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: phone number must not exceed 20 characters.'
+      });
+    }
+
+    // 4. Email format validation (standard RFC 5322 regex)
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+    if (!emailRegex.test(trimmedEmail) || trimmedEmail.length > 254) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: please provide a valid email address.'
+      });
+    }
+
+    // 5. In-memory duplicate submission check
+    const duplicateKey = `${trimmedEmail.toLowerCase()}_${trimmedSubject.toLowerCase()}_${trimmedMessage.slice(0, 100).toLowerCase()}`;
+    if (isDuplicateSubmission(duplicateKey, 60)) {
+      return res.status(429).json({
+        success: false,
+        message: 'Duplicate submission detected. Please wait at least 60 seconds before re-sending identical enquiries.'
+      });
+    }
+
+    // 6. Send email via Resend SDK
+    const emailResult = await sendContactEnquiryEmail({
+      name: trimmedName,
+      email: trimmedEmail,
+      phone: trimmedPhone,
+      subject: trimmedSubject,
+      message: trimmedMessage,
+      submittedAt: new Date().toISOString(),
+      clientIp: req.ip
+    });
+
+    if (!emailResult.success) {
+      if (emailResult.notConfigured) {
+        return res.status(503).json({
+          success: false,
+          message: 'The email service is temporarily unconfigured on this deployment. Please reach out via WhatsApp (+91 7774946121) or phone.'
+        });
+      }
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to deliver your email message. Please try again later or contact us directly on WhatsApp.'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Your message has been sent successfully! Our center team will get back to you shortly.',
+      id: emailResult.id
+    });
+  } catch (err) {
+    console.error('[Server] Uncaught error in POST /api/email/send:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'An internal server error occurred while processing your message.'
+    });
+  }
+});
 
 // 1. Auth: Register Customer
 app.post('/api/auth/register', async (req, res) => {
@@ -1026,11 +1212,12 @@ app.use((err, req, res, next) => {
 
 // Start Server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`===============================================`);
     console.log(`Arya Enterprises Maha E-Seva Kendra API Server`);
-    console.log(`Listening on port: ${PORT}`);
+    console.log(`Listening on host 0.0.0.0, port: ${PORT}`);
     console.log(`Health Check: http://localhost:${PORT}/health`);
+    console.log(`Email Service: Powered by Resend HTTPS API`);
     console.log(`Database File: ${path.join(__dirname, 'data', 'database.json')}`);
     console.log(`Status: Ready for Render deployment & Vercel CORS`);
     console.log(`===============================================`);

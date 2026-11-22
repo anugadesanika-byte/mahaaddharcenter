@@ -669,6 +669,22 @@ export const api = {
     }
   },
 
+  // Contact Enquiry Email via Resend HTTPS API
+  async sendContactEmail(enquiryData) {
+    const res = await fetch(`${API_BASE_URL}/api/email/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(enquiryData)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || data.error || `Failed to deliver email (${res.status})`);
+    }
+    return data;
+  },
+
   async sendApprovalEmail(id) {
     try {
       const res = await fetch(`${API_BASE_URL}/api/requests/${id}/send-approval-email`, {
