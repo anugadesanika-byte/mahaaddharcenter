@@ -543,15 +543,40 @@ export const api = {
   },
 
   async getMyRequests() {
+    const currentUserRaw = localStorage.getItem('eseva_user');
+    let currentUser = null;
+    if (currentUserRaw) {
+      try {
+        currentUser = JSON.parse(currentUserRaw);
+      } catch (e) {}
+    }
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/requests/my-requests`, {
         headers: getAuthHeaders()
       });
       if (!res.ok) throw new Error('Failed to fetch your requests');
-      return await res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
     } catch (err) {
+      // Offline fallback: Strictly isolate each customer's data
+      // New customers MUST get an empty, fresh dashboard of their own with 0 preloaded files
+      if (!currentUser || !currentUser.id) return [];
+
       const db = getLocalFallbackDB();
-      return db.requests || [];
+      // If demo customer account (customer@example.com), allow sample files
+      // If any newly registered citizen, return ONLY requests matching their specific ID or email
+      const isDemoCustomer = currentUser.email === 'customer@example.com' || currentUser.id === 'usr_demo_customer';
+
+      return (db.requests || []).filter((r) => {
+        if (isDemoCustomer) {
+          return r.customerId === 'usr_demo_customer' || r.customerEmail === 'customer@example.com';
+        }
+        return (
+          r.customerId === currentUser.id ||
+          (currentUser.email && r.customerEmail && r.customerEmail.toLowerCase() === currentUser.email.toLowerCase())
+        );
+      });
     }
   },
 
@@ -585,12 +610,20 @@ export const api = {
         reqData = { ...formDataOrData };
       }
 
+      const currentUserRaw = localStorage.getItem('eseva_user');
+      let currentUser = null;
+      if (currentUserRaw) {
+        try {
+          currentUser = JSON.parse(currentUserRaw);
+        } catch (e) {}
+      }
+
       const newReq = {
         id: newId,
-        customerId: reqData.customerId || 'usr_current',
-        customerName: reqData.applicantName || 'Applicant',
-        customerEmail: reqData.applicantEmail || 'applicant@example.com',
-        customerPhone: reqData.applicantPhone || '9800000000',
+        customerId: currentUser?.id || reqData.customerId || 'usr_current',
+        customerName: reqData.applicantName || currentUser?.name || 'Applicant',
+        customerEmail: reqData.applicantEmail || currentUser?.email || 'applicant@example.com',
+        customerPhone: reqData.applicantPhone || currentUser?.phone || '9800000000',
         aadhaarNumber: reqData.aadhaarNumber || '',
         address: reqData.address || '',
         serviceId: reqData.serviceId ? Number(reqData.serviceId) : 101,
@@ -601,8 +634,8 @@ export const api = {
         operatorRemarks: 'Application received online. Document verification queued.',
         fee: 100,
         trackingNumber: `TRACK-${Math.floor(100000 + Math.random() * 900000)}`,
-        documents: [
-          { name: 'Submitted Documents Packet', originalName: 'applicant_docs.pdf', url: '#' }
+        documents: (reqData.documents && reqData.documents.length > 0) ? reqData.documents : [
+          { name: 'Submitted Verification Documents', originalName: 'applicant_docs.pdf', url: '#' }
         ],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

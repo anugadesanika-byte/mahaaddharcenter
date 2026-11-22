@@ -493,6 +493,46 @@ export default function AnalyticsPanel({ analytics, requests = [], onRefresh }) 
         </div>
       </div>
 
+      {/* LIVE QUEUE REAL-TIME SYNC STRIP */}
+      {requests && requests.length > 0 && (
+        <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-sm border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black tracking-wider uppercase text-emerald-400">Live Production Queue</span>
+                <span className="bg-slate-800 text-[10px] text-slate-300 font-mono px-2 py-0.5 rounded">Synced Realtime</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Connected to Citizen Portal. Tracking {requests.length} active applications across all service categories.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs">
+            <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 text-center">
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">In Inflow</span>
+              <span className="font-extrabold text-white text-sm">{requests.length}</span>
+            </div>
+            <div className="bg-amber-950/40 px-3 py-1.5 rounded-xl border border-amber-800/40 text-center">
+              <span className="text-[10px] text-amber-400 block uppercase font-bold">Pending Review</span>
+              <span className="font-extrabold text-amber-300 text-sm">{requests.filter(r => r.status === 'pending').length}</span>
+            </div>
+            <div className="bg-blue-950/40 px-3 py-1.5 rounded-xl border border-blue-800/40 text-center">
+              <span className="text-[10px] text-blue-400 block uppercase font-bold">In-Progress</span>
+              <span className="font-extrabold text-blue-300 text-sm">{requests.filter(r => r.status === 'in_progress').length}</span>
+            </div>
+            <div className="bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-800/40 text-center">
+              <span className="text-[10px] text-emerald-400 block uppercase font-bold">Fulfilled</span>
+              <span className="font-extrabold text-emerald-300 text-sm">{requests.filter(r => r.status === 'fulfilled').length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ========================================================= */}
       {/* 5 EXECUTIVE KPI TILES (DYNAMIC PER TIMEFRAME) */}
       {/* ========================================================= */}
